@@ -1,12 +1,16 @@
-defmodule ValidatorTest do
+defmodule ExValidatorTest do
   use ExUnit.Case
-  doctest Validator, import: true
+  doctest ExValidator, import: true
 
-  import Validator
+  import ExValidator
 
   test "one of validation" do
     assert {:ok, 1} = integer(one_of: [1, 2]).(1)
     assert {:error, "not allowed"} = integer(one_of: [1, 2]).(3)
+  end
+
+  test "defaults" do
+    assert {:ok, 42} = integer(default: 42).("")
   end
 
   test "validates integers" do
@@ -17,6 +21,8 @@ defmodule ValidatorTest do
     assert {:error, "greater than 1"} = integer(max: 1).(2)
 
     assert {:ok, nil} = integer(min: 2, max: 2).(nil)
+
+    assert {:ok, nil} = integer(one_of: [1, 2, 3]).(nil)
   end
 
   test "validates floats" do
@@ -37,6 +43,7 @@ defmodule ValidatorTest do
     assert {:error, "less than 4 chars long"} = string(min: 4).("foo")
 
     assert {:ok, nil} = string(min: 2, max: 2).(nil)
+    assert {:ok, nil} = string(maches: ~r/foo/).(nil)
   end
 
   test "validates lists" do

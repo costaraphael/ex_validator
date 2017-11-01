@@ -1,5 +1,8 @@
 # ExValidator
 
+[![Hex.pm](https://img.shields.io/hexpm/v/ex_validator.svg?style=flat-square)](https://hex.pm/packages/ex_validator)
+[![Hex.pm](https://img.shields.io/hexpm/dt/ex_validator.svg?style=flat-square)](https://hex.pm/packages/ex_validator)
+
 Helpers for validating and normalizing Elixir data structures.
 
 The validation works as simple composable functions, allowing simple validations...
@@ -61,17 +64,20 @@ The validation works as simple composable functions, allowing simple validations
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `validator` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `ex_validator` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:validator, "~> 0.1.0"}
+    {:ex_validator, "~> 0.1.0"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/validator](https://hexdocs.pm/validator).
+## Documentation
+
+Online documentation is available [here](https://hexdocs.pm/ex_validator).
+
+## Licence
+
+The ExValidator source code is lecensed under the [MIT License](https://github.com/ex_validator/ecto/blob/master/LICENSE)

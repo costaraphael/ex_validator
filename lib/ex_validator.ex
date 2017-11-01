@@ -1,6 +1,8 @@
-defmodule Validator do
+defmodule ExValidator do
   @moduledoc """
   Helpers for validating and normalizing Elixir data structures.
+
+  _All the examples below asume that the `ExValidator` module is imported._
 
   The validation works as simple composable functions, allowing simple validations...
 
@@ -58,7 +60,10 @@ defmodule Validator do
   These are the global options shared among all validators:
 
     - `required` - validates if the value is present
+    - `default` - default result for when the value is not present
   """
+
+  @type t(result) :: (any() -> {:ok, result} | {:error, any()})
 
   @doc """
   Validates and trims strings. Values that implement the `String.Chars` protocol are converted
@@ -66,9 +71,10 @@ defmodule Validator do
 
   ## Options
 
-    - `max` - validates if the string is smaller than the given size
-    - `min` - validates if the string is bigger than the given size
-    - `one_of` - validates if the value is contained in the passed list
+    - `min` - validates that the string length is equal to or greater than the given value
+    - `max` - validates that the string length is equal to or smaller than the given value
+    - `one_of` - validates that the string is contained in the given enum
+    - `matches` - validates that the string matches the given pattern
     - `message` - changes the returned error message
 
   ## Examples
@@ -77,6 +83,10 @@ defmodule Validator do
       {:ok, "some text"}
       iex> string().("   some text \\n")
       {:ok, "some text"}
+      iex> string(matches: ~r/foo|bar/).("fooz")
+      {:ok, "fooz"}
+      iex> string(matches: ~r/foo|bar/).("baz")
+      {:error, "no match"}
       iex> string().(%{})
       {:error, "not a string"}
 
@@ -85,6 +95,7 @@ defmodule Validator do
       iex> string(required: true).("")
       {:error, "is blank"}
   """
+  @spec string(Keyword.t()) :: t(String.t())
   def string(opts \\ []) do
     fn value ->
       run_steps(value, opts[:message], [
@@ -92,8 +103,10 @@ defmodule Validator do
         &trim_string(&1),
         &validate_required(&1, opts[:required]),
         &validate_one_of(&1, opts[:one_of]),
-        &validate_min_string(&1, opts[:min]),
-        &validate_max_string(&1, opts[:max])
+        &validate_string_min(&1, opts[:min]),
+        &validate_string_max(&1, opts[:max]),
+        &validate_string_matches(&1, opts[:matches]),
+        &put_default(&1, opts[:default])
       ])
     end
   end
@@ -103,9 +116,9 @@ defmodule Validator do
 
   ## Options
 
-    - `min` - validates if the number is less than the passed option
-    - `max` - validates if the number is greater than the passed option
-    - `one_of` - validates if the value is contained in the passed list
+    - `min` - validates that the number is equal to or greater than the given value
+    - `max` - validates that the number is equal to or smaller than the given value
+    - `one_of` - validates if the number is contained in the given enum
     - `message` - changes the returned error message
 
   ## Examples
@@ -124,14 +137,16 @@ defmodule Validator do
       iex> integer(required: true).(nil)
       {:error, "is blank"}
   """
+  @spec integer(Keyword.t()) :: t(integer())
   def integer(opts \\ []) do
     fn v ->
       run_steps(v, opts[:message], [
         fn v -> parse_number(v, &Integer.parse/1) end,
         &validate_required(&1, opts[:required]),
         &validate_one_of(&1, opts[:one_of]),
-        &validate_min_number(&1, opts[:min]),
-        &validate_max_number(&1, opts[:max])
+        &validate_number_min(&1, opts[:min]),
+        &validate_number_max(&1, opts[:max]),
+        &put_default(&1, opts[:default])
       ])
     end
   end
@@ -141,8 +156,8 @@ defmodule Validator do
 
   ## Options
 
-    - `min` - validates if the number is less than the passed option
-    - `max` - validates if the number is greater than the passed option
+    - `min` - validates that the number is equal to or greater than the given value
+    - `max` - validates that the number is equal to or smaller than the given value
     - `message` - changes the returned error message
 
   ## Examples
@@ -161,13 +176,55 @@ defmodule Validator do
       iex> float(required: true).(nil)
       {:error, "is blank"}
   """
+  @spec float(Keyword.t()) :: t(float())
   def float(opts \\ []) do
     fn v ->
       run_steps(v, opts[:message], [
         fn v -> parse_number(v, &Float.parse/1) end,
         &validate_required(&1, opts[:required]),
-        &validate_min_number(&1, opts[:min]),
-        &validate_max_number(&1, opts[:max])
+        &validate_number_min(&1, opts[:min]),
+        &validate_number_max(&1, opts[:max]),
+        &put_default(&1, opts[:default])
+      ])
+    end
+  end
+
+  @doc """
+  Validates and parses booleans.
+
+  The parsing follows the following rule:
+
+    - truthy values: true, "true", 1, "1"
+    - falsey values: false, "false", 0, "0"
+
+  ## Options
+
+    - `message` - changes the returned error message
+
+  ## Examples
+
+      iex> boolean().(true)
+      {:ok, true}
+      iex> boolean().("1")
+      {:ok, true}
+      iex> boolean().("true")
+      {:ok, true}
+      iex> boolean().("0")
+      {:ok, false}
+      iex> boolean().("false")
+      {:ok, false}
+      iex> boolean().(nil)
+      {:ok, nil}
+      iex> boolean().("yes")
+      {:error, "not a boolean"}
+  """
+  @spec boolean(Keyword.t()) :: t(boolean())
+  def boolean(opts \\ []) do
+    fn value ->
+      run_steps(value, [
+        &parse_boolean(&1),
+        &validate_required(&1, opts[:required]),
+        &put_default(&1, opts[:default])
       ])
     end
   end
@@ -179,8 +236,8 @@ defmodule Validator do
 
   ## Options
 
-    - `min` - validates that the list length is equal to or greater than the passed value
-    - `max` - validates that the list length is equal to or smaller than the passed value
+    - `min` - validates that the list length is equal to or greater than the given value
+    - `max` - validates that the list length is equal to or smaller than the given value
 
   ## Examples
 
@@ -196,14 +253,16 @@ defmodule Validator do
       iex> list_of(integer(), required: true).(nil)
       {:error, "is blank"}
   """
+  @spec list_of(t(a), Keyword.t()) :: t([a]) when a: var
   def list_of(validator, opts \\ []) do
     fn value ->
       run_steps(value, [
         &ensure_list(&1),
         &validate_required(&1, opts[:required]),
         &validate_elements(&1, validator),
-        &validate_min_list(&1, opts[:min]),
-        &validate_max_list(&1, opts[:max])
+        &validate_list_min(&1, opts[:min]),
+        &validate_list_max(&1, opts[:max]),
+        &put_default(&1, opts[:default])
       ])
     end
   end
@@ -230,12 +289,14 @@ defmodule Validator do
       iex> map_of(%{}, required: true).(nil)
       {:error, "is blank"}
   """
+  @spec map_of(%{required(atom()) => t(any())}, Keyword.t()) :: t(%{required(atom()) => any()})
   def map_of(spec, opts \\ []) do
     fn value ->
       run_steps(value, [
         &validate_map(&1),
         &validate_required(&1, opts[:required]),
-        &validate_spec(&1, spec)
+        &validate_spec(&1, spec),
+        &put_default(&1, opts[:default])
       ])
     end
   end
@@ -261,8 +322,33 @@ defmodule Validator do
       iex> validator.(17)
       {:error, "IT'S TOO HIGH!!!"}
   """
+  @spec compose([t(a)]) :: t(a) when a: var
   def compose(validators) do
     fn value -> run_steps(value, validators) end
+  end
+
+  @doc """
+  Checks if any of the given validators allows the value.
+
+  ## Examples
+
+      iex> validator = any_of([integer(required: true), string(required: true, matches: ~r/^foo/)])
+      iex> validator.(1)
+      {:ok, 1}
+      iex> validator.("fooz")
+      {:ok, "fooz"}
+      iex> validator.("baaz")
+      {:error, ["not a number", "no match"]}
+      iex> validator.(nil)
+      {:error, ["is blank", "is blank"]}
+  """
+  @spec any_of([t(any())]) :: t(any())
+  def any_of(validators) do
+    fn value ->
+      run_steps(value, [
+        &check_any_of(&1, validators)
+      ])
+    end
   end
 
   defp run_steps(value, custom_message \\ nil, steps)
@@ -280,6 +366,10 @@ defmodule Validator do
   defp validate_required(nil, true), do: {:error, "is blank"}
   defp validate_required(value, _), do: {:ok, value}
 
+  defp put_default(nil, default), do: {:ok, default}
+  defp put_default(value, _default), do: {:ok, value}
+
+  defp validate_one_of(nil, _enum), do: {:ok, nil}
   defp validate_one_of(value, nil), do: {:ok, value}
 
   defp validate_one_of(value, enum) do
@@ -292,10 +382,10 @@ defmodule Validator do
 
   # String parsing and validation
 
-  defp validate_min_string(nil, _min), do: {:ok, nil}
-  defp validate_min_string(str, nil), do: {:ok, str}
+  defp validate_string_min(nil, _min), do: {:ok, nil}
+  defp validate_string_min(str, nil), do: {:ok, str}
 
-  defp validate_min_string(str, min) do
+  defp validate_string_min(str, min) do
     if String.length(str) >= min do
       {:ok, str}
     else
@@ -303,14 +393,25 @@ defmodule Validator do
     end
   end
 
-  defp validate_max_string(nil, _max), do: {:ok, nil}
-  defp validate_max_string(str, nil), do: {:ok, str}
+  defp validate_string_max(nil, _max), do: {:ok, nil}
+  defp validate_string_max(str, nil), do: {:ok, str}
 
-  defp validate_max_string(str, max) do
+  defp validate_string_max(str, max) do
     if String.length(str) <= max do
       {:ok, str}
     else
       {:error, "more than #{max} chars long"}
+    end
+  end
+
+  defp validate_string_matches(nil, _pattern), do: {:ok, nil}
+  defp validate_string_matches(str, nil), do: {:ok, str}
+
+  defp validate_string_matches(str, pattern) do
+    if str =~ pattern do
+      {:ok, str}
+    else
+      {:error, "no match"}
     end
   end
 
@@ -331,15 +432,15 @@ defmodule Validator do
 
   # Number parsing and validation
 
-  defp validate_min_number(nil, _min), do: {:ok, nil}
-  defp validate_min_number(n, nil), do: {:ok, n}
-  defp validate_min_number(n, min) when n >= min, do: {:ok, n}
-  defp validate_min_number(_, min), do: {:error, "less than #{min}"}
+  defp validate_number_min(nil, _min), do: {:ok, nil}
+  defp validate_number_min(n, nil), do: {:ok, n}
+  defp validate_number_min(n, min) when n >= min, do: {:ok, n}
+  defp validate_number_min(_, min), do: {:error, "less than #{min}"}
 
-  defp validate_max_number(nil, _max), do: {:ok, nil}
-  defp validate_max_number(n, nil), do: {:ok, n}
-  defp validate_max_number(n, max) when n <= max, do: {:ok, n}
-  defp validate_max_number(_, max), do: {:error, "greater than #{max}"}
+  defp validate_number_max(nil, _max), do: {:ok, nil}
+  defp validate_number_max(n, nil), do: {:ok, n}
+  defp validate_number_max(n, max) when n <= max, do: {:ok, n}
+  defp validate_number_max(_, max), do: {:error, "greater than #{max}"}
 
   defp parse_number(v, _parser) when is_number(v), do: {:ok, v}
 
@@ -364,6 +465,23 @@ defmodule Validator do
           {n, ""} -> {:ok, n}
           _ -> {:error, "not a number"}
         end
+    end
+  end
+
+  # Boolean parsing
+
+  defp parse_boolean(value) when is_boolean(value), do: {:ok, value}
+
+  defp parse_boolean(value) do
+    validator = any_of([integer(one_of: [0, 1]), string(one_of: ["true", "false"])])
+
+    case validator.(value) do
+      {:ok, 1} -> {:ok, true}
+      {:ok, "true"} -> {:ok, true}
+      {:ok, 0} -> {:ok, false}
+      {:ok, "false"} -> {:ok, false}
+      {:ok, nil} -> {:ok, nil}
+      _ -> {:error, "not a boolean"}
     end
   end
 
@@ -394,15 +512,15 @@ defmodule Validator do
     end
   end
 
-  defp validate_min_list(nil, _min), do: {:ok, nil}
-  defp validate_min_list(list, nil), do: {:ok, list}
-  defp validate_min_list(list, min) when length(list) >= min, do: {:ok, list}
-  defp validate_min_list(_list, min), do: {:error, "smaller than #{min} elements"}
+  defp validate_list_min(nil, _min), do: {:ok, nil}
+  defp validate_list_min(list, nil), do: {:ok, list}
+  defp validate_list_min(list, min) when length(list) >= min, do: {:ok, list}
+  defp validate_list_min(_list, min), do: {:error, "smaller than #{min} elements"}
 
-  defp validate_max_list(nil, _max), do: {:ok, nil}
-  defp validate_max_list(list, nil), do: {:ok, list}
-  defp validate_max_list(list, max) when length(list) <= max, do: {:ok, list}
-  defp validate_max_list(_list, max), do: {:error, "longer than #{max} elements"}
+  defp validate_list_max(nil, _max), do: {:ok, nil}
+  defp validate_list_max(list, nil), do: {:ok, list}
+  defp validate_list_max(list, max) when length(list) <= max, do: {:ok, list}
+  defp validate_list_max(_list, max), do: {:error, "longer than #{max} elements"}
 
   # Map validation
 
@@ -426,4 +544,24 @@ defmodule Validator do
   end
 
   defp fetch_map_value(map, key), do: map[key] || map[to_string(key)]
+
+  # Any of validation
+
+  defp check_any_of(value, validators) do
+    result =
+      Enum.reduce_while(validators, {:error, []}, fn validator, {:error, errors} ->
+        case validator.(value) do
+          {:ok, new_value} ->
+            {:halt, {:ok, new_value}}
+
+          {:error, error} ->
+            {:cont, {:error, [error | errors]}}
+        end
+      end)
+
+    case result do
+      {:ok, value} -> {:ok, value}
+      {:error, errors} -> {:error, Enum.reverse(errors)}
+    end
+  end
 end
