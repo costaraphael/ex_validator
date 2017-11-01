@@ -6,7 +6,7 @@ defmodule ExValidatorTest do
 
   test "one of validation" do
     assert {:ok, 1} = integer(one_of: [1, 2]).(1)
-    assert {:error, "not allowed"} = integer(one_of: [1, 2]).(3)
+    assert {:error, "is not allowed"} = integer(one_of: [1, 2]).(3)
   end
 
   test "defaults" do
@@ -15,10 +15,10 @@ defmodule ExValidatorTest do
 
   test "validates integers" do
     assert {:ok, 1} = integer(min: 1).(1)
-    assert {:error, "less than 1"} = integer(min: 1).(0)
+    assert {:error, "is less than 1"} = integer(min: 1).(0)
 
     assert {:ok, 1} = integer(max: 1).(1)
-    assert {:error, "greater than 1"} = integer(max: 1).(2)
+    assert {:error, "is greater than 1"} = integer(max: 1).(2)
 
     assert {:ok, nil} = integer(min: 2, max: 2).(nil)
 
@@ -27,20 +27,20 @@ defmodule ExValidatorTest do
 
   test "validates floats" do
     assert {:ok, 1.0} = float(min: 1).(1.0)
-    assert {:error, "less than 1"} = float(min: 1).(0.5)
+    assert {:error, "is less than 1"} = float(min: 1).(0.5)
 
     assert {:ok, 1} = float(max: 1).(1)
-    assert {:error, "greater than 1"} = float(max: 1).(1.5)
+    assert {:error, "is greater than 1"} = float(max: 1).(1.5)
 
     assert {:ok, nil} = float(min: 2, max: 2).(nil)
   end
 
   test "validates strings" do
     assert {:ok, "foo"} = string(max: 3).("foo")
-    assert {:error, "more than 2 chars long"} = string(max: 2).("foo")
+    assert {:error, "is more than 2 chars long"} = string(max: 2).("foo")
 
     assert {:ok, "foo"} = string(min: 3).("foo")
-    assert {:error, "less than 4 chars long"} = string(min: 4).("foo")
+    assert {:error, "is less than 4 chars long"} = string(min: 4).("foo")
 
     assert {:ok, nil} = string(min: 2, max: 2).(nil)
     assert {:ok, nil} = string(maches: ~r/foo/).(nil)
@@ -48,8 +48,8 @@ defmodule ExValidatorTest do
 
   test "validates lists" do
     assert {:ok, [1, 2, 3]} = list_of(integer(min: 0), max: 3).([1, 2, 3, nil, ""])
-    assert {:error, "longer than 3 elements"} = list_of(integer(), max: 3).([1, 2, 3, 4])
-    assert {:error, "smaller than 3 elements"} = list_of(integer(), min: 3).([1, 2, nil, ""])
+    assert {:error, "is longer than 3 elements"} = list_of(integer(), max: 3).([1, 2, 3, 4])
+    assert {:error, "is smaller than 3 elements"} = list_of(integer(), min: 3).([1, 2, nil, ""])
 
     assert {:ok, nil} = list_of(integer(), min: 2, max: 2).(nil)
   end

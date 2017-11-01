@@ -10,7 +10,7 @@ defmodule ExValidator do
       iex> validator.(2)
       {:ok, 2}
       iex> validator.(4)
-      {:error, "greater than 2"}
+      {:error, "is greater than 2"}
 
   ...data casting...
 
@@ -18,7 +18,7 @@ defmodule ExValidator do
       iex> validator.(%{"name" => "Jhon", "age": "26"})
       {:ok, %{name: "Jhon", age: 26}}
       iex> validator.(%{"age": "a"})
-      {:error, %{name: "is blank", age: "not a number"}}
+      {:error, %{name: "is blank", age: "is not a number"}}
 
   ...and more complex use cases:
 
@@ -51,7 +51,7 @@ defmodule ExValidator do
       ...> ]
       iex> validator.(data)
       {:error, %{
-        0 => %{age: "not a number"},
+        0 => %{age: "is not a number"},
         1 => %{addresses: %{0 => %{state: "is blank"}}}
       }}
 
@@ -86,9 +86,9 @@ defmodule ExValidator do
       iex> string(matches: ~r/foo|bar/).("fooz")
       {:ok, "fooz"}
       iex> string(matches: ~r/foo|bar/).("baz")
-      {:error, "no match"}
+      {:error, "does not match"}
       iex> string().(%{})
-      {:error, "not a string"}
+      {:error, "is not a string"}
 
       iex> string().("")
       {:ok, nil}
@@ -128,7 +128,7 @@ defmodule ExValidator do
       iex> integer().("1")
       {:ok, 1}
       iex> integer().("1a")
-      {:error, "not a number"}
+      {:error, "is not a number"}
       iex> integer(message: "what is this?").(:foo)
       {:error, "what is this?"}
 
@@ -167,7 +167,7 @@ defmodule ExValidator do
       iex> float().("1")
       {:ok, 1.0}
       iex> float().("1a")
-      {:error, "not a number"}
+      {:error, "is not a number"}
       iex> float(message: "whaaaat?").(:foo)
       {:error, "whaaaat?"}
 
@@ -216,7 +216,7 @@ defmodule ExValidator do
       iex> boolean().(nil)
       {:ok, nil}
       iex> boolean().("yes")
-      {:error, "not a boolean"}
+      {:error, "is not a boolean"}
   """
   @spec boolean(Keyword.t()) :: t(boolean())
   def boolean(opts \\ []) do
@@ -244,9 +244,9 @@ defmodule ExValidator do
       iex> list_of(integer()).([1, 2, 3])
       {:ok, [1, 2, 3]}
       iex> list_of(integer()).("")
-      {:error, "not a list"}
+      {:error, "is not a list"}
       iex> list_of(integer(min: 5, max: 15)).([3, 4, 7, 8, 10, 13, 17])
-      {:error, %{0 => "less than 5", 1 => "less than 5", 6 => "greater than 15"}}
+      {:error, %{0 => "is less than 5", 1 => "is less than 5", 6 => "is greater than 15"}}
 
       iex> list_of(integer()).(nil)
       {:ok, nil}
@@ -280,11 +280,11 @@ defmodule ExValidator do
       iex> validator.(%{"name" => "Jhon", "age" => "2"})
       {:ok, %{name: "Jhon", age: 2}}
       iex> validator.(%{age: 0})
-      {:error, %{name: "is blank", age: "less than 1"}}
+      {:error, %{name: "is blank", age: "is less than 1"}}
       iex> validator.(nil)
       {:ok, nil}
       iex> validator.("")
-      {:error, "not a map"}
+      {:error, "is not a map"}
 
       iex> map_of(%{}, required: true).(nil)
       {:error, "is blank"}
@@ -338,7 +338,7 @@ defmodule ExValidator do
       iex> validator.("fooz")
       {:ok, "fooz"}
       iex> validator.("baaz")
-      {:error, ["not a number", "no match"]}
+      {:error, ["is not a number", "does not match"]}
       iex> validator.(nil)
       {:error, ["is blank", "is blank"]}
   """
@@ -376,7 +376,7 @@ defmodule ExValidator do
     if value in enum do
       {:ok, value}
     else
-      {:error, "not allowed"}
+      {:error, "is not allowed"}
     end
   end
 
@@ -389,7 +389,7 @@ defmodule ExValidator do
     if String.length(str) >= min do
       {:ok, str}
     else
-      {:error, "less than #{min} chars long"}
+      {:error, "is less than #{min} chars long"}
     end
   end
 
@@ -400,7 +400,7 @@ defmodule ExValidator do
     if String.length(str) <= max do
       {:ok, str}
     else
-      {:error, "more than #{max} chars long"}
+      {:error, "is more than #{max} chars long"}
     end
   end
 
@@ -411,7 +411,7 @@ defmodule ExValidator do
     if str =~ pattern do
       {:ok, str}
     else
-      {:error, "no match"}
+      {:error, "does not match"}
     end
   end
 
@@ -420,7 +420,7 @@ defmodule ExValidator do
   defp parse_string(v) do
     {:ok, to_string(v)}
   rescue
-    Protocol.UndefinedError -> {:error, "not a string"}
+    Protocol.UndefinedError -> {:error, "is not a string"}
   end
 
   defp trim_string(str) do
@@ -435,12 +435,12 @@ defmodule ExValidator do
   defp validate_number_min(nil, _min), do: {:ok, nil}
   defp validate_number_min(n, nil), do: {:ok, n}
   defp validate_number_min(n, min) when n >= min, do: {:ok, n}
-  defp validate_number_min(_, min), do: {:error, "less than #{min}"}
+  defp validate_number_min(_, min), do: {:error, "is less than #{min}"}
 
   defp validate_number_max(nil, _max), do: {:ok, nil}
   defp validate_number_max(n, nil), do: {:ok, n}
   defp validate_number_max(n, max) when n <= max, do: {:ok, n}
-  defp validate_number_max(_, max), do: {:error, "greater than #{max}"}
+  defp validate_number_max(_, max), do: {:error, "is greater than #{max}"}
 
   defp parse_number(v, _parser) when is_number(v), do: {:ok, v}
 
@@ -453,7 +453,7 @@ defmodule ExValidator do
     ])
   end
 
-  defp parse_number(_, _parser), do: {:error, "not a number"}
+  defp parse_number(_, _parser), do: {:error, "is not a number"}
 
   defp parse_number_from_string(parser) do
     fn
@@ -463,7 +463,7 @@ defmodule ExValidator do
       str ->
         case parser.(str) do
           {n, ""} -> {:ok, n}
-          _ -> {:error, "not a number"}
+          _ -> {:error, "is not a number"}
         end
     end
   end
@@ -481,7 +481,7 @@ defmodule ExValidator do
       {:ok, 0} -> {:ok, false}
       {:ok, "false"} -> {:ok, false}
       {:ok, nil} -> {:ok, nil}
-      _ -> {:error, "not a boolean"}
+      _ -> {:error, "is not a boolean"}
     end
   end
 
@@ -489,7 +489,7 @@ defmodule ExValidator do
 
   defp ensure_list(nil), do: {:ok, nil}
   defp ensure_list(list) when is_list(list), do: {:ok, list}
-  defp ensure_list(_), do: {:error, "not a list"}
+  defp ensure_list(_), do: {:error, "is not a list"}
 
   defp validate_elements(nil, _validator), do: {:ok, nil}
 
@@ -515,18 +515,18 @@ defmodule ExValidator do
   defp validate_list_min(nil, _min), do: {:ok, nil}
   defp validate_list_min(list, nil), do: {:ok, list}
   defp validate_list_min(list, min) when length(list) >= min, do: {:ok, list}
-  defp validate_list_min(_list, min), do: {:error, "smaller than #{min} elements"}
+  defp validate_list_min(_list, min), do: {:error, "is smaller than #{min} elements"}
 
   defp validate_list_max(nil, _max), do: {:ok, nil}
   defp validate_list_max(list, nil), do: {:ok, list}
   defp validate_list_max(list, max) when length(list) <= max, do: {:ok, list}
-  defp validate_list_max(_list, max), do: {:error, "longer than #{max} elements"}
+  defp validate_list_max(_list, max), do: {:error, "is longer than #{max} elements"}
 
   # Map validation
 
   defp validate_map(nil), do: {:ok, nil}
   defp validate_map(map) when is_map(map), do: {:ok, map}
-  defp validate_map(_), do: {:error, "not a map"}
+  defp validate_map(_), do: {:error, "is not a map"}
 
   defp validate_spec(nil, _spec), do: {:ok, nil}
 

@@ -12,7 +12,7 @@ The validation works as simple composable functions, allowing simple validations
   iex> validator.(2)
   {:ok, 2}
   iex> validator.(4)
-  {:error, "greater than 2"}
+  {:error, "is greater than 2"}
   ```
 
 ...data casting...
@@ -22,7 +22,7 @@ The validation works as simple composable functions, allowing simple validations
   iex> validator.(%{"name" => "Jhon", "age": "26"})
   {:ok, %{name: "Jhon", age: 26}}
   iex> validator.(%{"age": "a"})
-  {:error, %{name: "is blank", age: "not a number"}}
+  {:error, %{name: "is blank", age: "is not a number"}}
   ```
 
 ...and more complex use cases:
@@ -57,7 +57,7 @@ The validation works as simple composable functions, allowing simple validations
   ...> ]
   iex> validator.(data)
   {:error, %{
-    0 => %{age: "not a number"},
+    0 => %{age: "is not a number"},
     1 => %{addresses: %{0 => %{state: "is blank"}}}
   }}
   ```
